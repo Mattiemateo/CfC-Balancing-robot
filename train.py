@@ -1,8 +1,13 @@
 import numpy as np
 import pandas as pd
+import random
 
 df = pd.read_csv('balance_data.csv')
-df= df.sample(n=50000, random_state=42).reset_index(drop=True)
+
+episodes = [df.iloc[i:i+1200] for i in range(0, len(df), 1200)]
+random.shuffle(episodes)
+df = pd.concat(episodes[:20]).reset_index(drop=True)
+
 theta = df['theta'].values.astype(np.float32)
 theta_dot = df['theta_dot'].values.astype(np.float32)
 u = df['u'].values.astype(np.float32)
@@ -36,7 +41,7 @@ import torch.nn as nn
 from ncps.torch import CfC
 from ncps.wirings import AutoNCP
 
-device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
+device = torch.device('cpu')
 print(f"using {device}")
 
 X_t = torch.tensor(X).to(device)

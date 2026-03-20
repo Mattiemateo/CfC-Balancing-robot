@@ -4,7 +4,7 @@ import pandas as pd
 from ncps.torch import CfC
 from ncps.wirings import AutoNCP
 
-checkpoint = torch.load('cfc_balancer.pt', weights_only=False)
+checkpoint = torch.load('cfc_balancerV1.pt', weights_only=False)
 u_scale = checkpoint['u_scale']
 
 wiring = AutoNCP(16, 1)
