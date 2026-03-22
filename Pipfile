@@ -9,6 +9,7 @@ matplotlib = "*"
 ncps = "*"
 torch = "*"
 pandas = "*"
+scipy = "*"
 
 [dev-packages]
 
