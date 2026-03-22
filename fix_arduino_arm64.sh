@@ -2,7 +2,7 @@
 # Fix Arduino ESP32 tools for Apple Silicon (ARM64)
 
 echo "╔════════════════════════════════════════════════════════╗"
-echo "║  Arduino ESP32 Setup Fixer for Apple Silicon (ARM64)   ║"
+echo "║  Arduino Setup Fixer for Apple Silicon (ARM64)         ║"
 echo "╚════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -30,7 +30,8 @@ fi
 echo "Cleaning up Intel (x86_64) tools..."
 echo ""
 
-# Remove old Intel tools
+# ============= ESP32 TOOLS =============
+echo "ESP32 Package:"
 TOOLS_TO_REMOVE=(
     "esptool_py"
     "xtensa-esp32-elf-gcc"
@@ -48,8 +49,24 @@ for tool in "${TOOLS_TO_REMOVE[@]}"; do
     fi
 done
 
+# ============= BUILTIN TOOLS =============
 echo ""
-echo "✓ Cleaned up Intel tools"
+echo "Builtin Package (removing old Intel versions):"
+
+# Remove specific old versions of builtin tools
+rm -rf ~/Library/Arduino15/packages/builtin/tools/ctags
+rm -rf ~/Library/Arduino15/packages/builtin/tools/serial-monitor/0.15.0
+rm -rf ~/Library/Arduino15/packages/builtin/tools/serial-monitor/0.13.0
+rm -rf ~/Library/Arduino15/packages/builtin/tools/serial-monitor/0.14.1
+rm -rf ~/Library/Arduino15/packages/builtin/tools/dfu-discovery/0.1.2
+rm -rf ~/Library/Arduino15/packages/builtin/tools/serial-discovery/1.4.1
+rm -rf ~/Library/Arduino15/packages/builtin/tools/serial-discovery/1.4.0
+rm -rf ~/Library/Arduino15/packages/builtin/tools/mdns-discovery/1.0.9
+
+echo "  ✓ Removed old tool versions"
+
+echo ""
+echo "✓ Cleaned up all Intel tools"
 echo ""
 echo "╔════════════════════════════════════════════════════════╗"
 echo "║  Next Steps:                                           ║"

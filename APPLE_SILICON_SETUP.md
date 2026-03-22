@@ -3,13 +3,13 @@
 ## Problem
 You have Intel (x86_64) tools in your Arduino setup on an Apple Silicon Mac. This causes:
 ```
-bash: /Users/mateodevos/Library/Arduino15/packages/esp32/tools/esptool_py/5.1.0/esptool: Bad CPU type in executable
-exit status 126
+Bad CPU type in executable
+fork/exec .../ctags: bad CPU type in executable
 ```
 
 ## Solution
 
-### Option 1: Automatic Cleanup (Recommended)
+### Step 1: Automatic Cleanup (Recommended) ⭐
 
 Run the cleanup script:
 ```bash
@@ -17,19 +17,34 @@ cd ~/Code/CfC_balancingRobot
 ./fix_arduino_arm64.sh
 ```
 
-This will:
-- ✓ Remove all Intel x86_64 tools
-- ✓ Clear space on your Mac
-- ✓ Prepare Arduino to re-download ARM64 versions
+This will remove:
+- **ESP32 package**: esptool_py, xtensa compilers, mklittlefs, openocd, gdb
+- **Builtin package**: ctags, old serial-monitor, serial-discovery, dfu-discovery, mdns-discovery
+- **Total freed**: 3-4 GB of Intel tools
 
-### Option 2: Manual Steps
+### Step 2: Re-download ARM64 Tools
 
-If you prefer to do it manually:
+1. **Close Arduino IDE** completely
+2. **Open Arduino IDE** again
+3. Go to **Tools → Board Manager**
+4. Search for **"ESP32"** by Espressif Systems
+5. Click **Install** (latest version)
+   - This will download ~1 GB of ARM64 tools
+   - Wait for completion (5-15 minutes depending on internet)
+6. **Close and re-open Arduino IDE**
+
+### Step 3: Try Uploading! 🚀
+
+Your code should now compile and upload without errors!
+
+---
+
+## Manual Cleanup (If You Prefer)
+
+Close Arduino IDE first, then:
 
 ```bash
-# Close Arduino IDE first!
-
-# Remove Intel tools
+# ESP32 Tools
 rm -rf ~/Library/Arduino15/packages/esp32/tools/esptool_py
 rm -rf ~/Library/Arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc
 rm -rf ~/Library/Arduino15/packages/esp32/tools/xtensa-esp32s2-elf-gcc
@@ -37,96 +52,58 @@ rm -rf ~/Library/Arduino15/packages/esp32/tools/xtensa-esp32s3-elf-gcc
 rm -rf ~/Library/Arduino15/packages/esp32/tools/mklittlefs
 rm -rf ~/Library/Arduino15/packages/esp32/tools/openocd-esp32
 rm -rf ~/Library/Arduino15/packages/esp32/tools/xtensa-esp-elf-gdb
+
+# Builtin Tools (remove Intel versions)
+rm -rf ~/Library/Arduino15/packages/builtin/tools/ctags
+rm -rf ~/Library/Arduino15/packages/builtin/tools/serial-monitor/0.15.0
+rm -rf ~/Library/Arduino15/packages/builtin/tools/serial-monitor/0.13.0
+rm -rf ~/Library/Arduino15/packages/builtin/tools/serial-monitor/0.14.1
+rm -rf ~/Library/Arduino15/packages/builtin/tools/dfu-discovery/0.1.2
+rm -rf ~/Library/Arduino15/packages/builtin/tools/serial-discovery/1.4.1
+rm -rf ~/Library/Arduino15/packages/builtin/tools/serial-discovery/1.4.0
+rm -rf ~/Library/Arduino15/packages/builtin/tools/mdns-discovery/1.0.9
 ```
 
-## After Cleanup
+Then follow Step 2 above to download ARM64 versions.
 
-1. **Close Arduino IDE** if it's open
-2. **Open Arduino IDE**
-3. Go to **Tools → Board Manager**
-4. Search for **"ESP32"** by Espressif Systems
-5. Click **Install** (will download ~800MB)
-   - This time it will download ARM64 versions automatically
-6. Wait for completion
-7. **Close Arduino IDE** completely
-8. **Re-open Arduino IDE**
-9. **Try uploading again** - should work!
+---
 
 ## Verify Setup is Correct
 
 To verify you have ARM64 tools installed:
 
 ```bash
-# Check esptool architecture (should show "arm64")
+# Check esptool (should show "arm64")
 file ~/Library/Arduino15/packages/esp32/tools/esptool_py/*/esptool
 
 # Check compiler (should show "arm64")
 file ~/Library/Arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/*/bin/xtensa-esp32-elf-gcc
+
+# Check builtin tools (should only see arm64)
+find ~/Library/Arduino15/packages/builtin/tools -type f -perm +111 | xargs file | grep arm64
 ```
 
 Expected output:
 ```
 .../esptool: Mach-O 64-bit executable arm64
+.../xtensa-esp32-elf-gcc: Mach-O 64-bit executable arm64
 ```
+
+No x86_64 should appear! ✓
+
+---
 
 ## Storage Reclaimed
 
-Removing old Intel tools frees up ~2-3 GB of space on your Mac! 🎉
+Removing all old Intel tools frees up **3-4 GB** of space! 🎉
 
-## If Issues Persist
+---
 
-### Still getting "Bad CPU type" error?
+## Intel vs ARM64 Tools Being Cleaned
 
-1. Completely remove Arduino:
-   ```bash
-   rm -rf ~/Library/Arduino15
-   rm -rf ~/.arduino15
-   ```
-2. Close Arduino IDE
-3. Download latest Arduino IDE for Mac (ARM64)
-4. Re-install ESP32 board via Board Manager
-
-### Board Manager won't show ESP32?
-
-Make sure you added the URL in Preferences:
-- File → Preferences
-- Add to "Additional boards manager URLs":
-  ```
-  https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
-  ```
-
-## Troubleshooting Upload Issues
-
-After fixing tools, if upload still fails:
-
-| Error | Solution |
-|-------|----------|
-| `Bad CPU type` | You still have Intel tools - run cleanup again |
-| `Permission denied` | Try `chmod 755 ~/Library/Arduino15/packages/esp32/tools/*/bin/*` |
-| `Port not found` | Install CH340 driver or use USB hub |
-| `Device is read-only` | Restart Arduino IDE and try again |
-
-## Quick Commands for ESP32 Setup
-
-```bash
-# List all ESP32 tools and their architecture
-ls -la ~/Library/Arduino15/packages/esp32/tools/
-for dir in ~/Library/Arduino15/packages/esp32/tools/*/; do
-    echo "=== $(basename "$dir") ==="
-    file "$dir"bin/* 2>/dev/null | head -2
-done
-
-# Clean all Arduino caches
-rm -rf ~/Library/Arduino15/staging
-rm -rf ~/Library/Arduino15/tmp
-```
-
-## What's Being Cleaned
-
-These are Intel (x86_64) tools that won't run on ARM64:
-
-| Tool | Size | Purpose |
-|------|------|---------|
+### ESP32 Package (~2-3 GB)
+| Tool | x86_64 Size | Purpose |
+|------|------------|---------|
 | esptool_py | 200MB | Upload/erase flasher |
 | xtensa-esp32-elf-gcc | 600MB | C/C++ compiler |
 | xtensa-esp32s2-elf-gcc | 600MB | S2 variant compiler |
@@ -135,23 +112,106 @@ These are Intel (x86_64) tools that won't run on ARM64:
 | openocd-esp32 | 150MB | Debugger/JTAG |
 | xtensa-esp-elf-gdb | 100MB | GDB debugger |
 
-**Total freed: ~2-3 GB** ✓
-
-## Apple Silicon Native Tools
-
-Arduino will automatically download these native ARM64 versions:
-- ✓ esptool_py (native ARM64)
-- ✓ xtensa-esp32-elf-gcc (native ARM64)
-- ✓ Full toolchain optimized for Apple Silicon
-
-## Support
-
-If you still have issues:
-1. Check your internet connection (tools are ~800MB)
-2. Verify you have 2GB+ free disk space
-3. Try downloading at different time (Espressif mirrors sometimes slow)
-4. Check Arduino IDE version (use latest)
+### Builtin Package (~1-2 GB)
+| Tool | Versions Removed | Purpose |
+|------|-----------------|---------|
+| ctags | 5.8-arduino11 | Code navigation |
+| serial-monitor | 0.13.0, 0.14.1, 0.15.0 | Serial port monitor |
+| serial-discovery | 1.4.0, 1.4.1 | Serial port detection |
+| dfu-discovery | 0.1.2 | USB device detection |
+| mdns-discovery | 1.0.9 | mDNS service discovery |
 
 ---
 
-**Everything should work smoothly once ARM64 tools are installed!** ⚡
+## Troubleshooting
+
+### "Bad CPU type in executable" Still Appears?
+
+1. Make sure Arduino is **completely closed**
+2. Run the cleanup script again:
+   ```bash
+   ./fix_arduino_arm64.sh
+   ```
+3. Wait 30 seconds, then open Arduino
+4. Go to Tools → Board Manager and re-install ESP32
+
+### "Cannot connect to COM port" After Setup?
+
+This is normal - try:
+1. Unplug ESP32
+2. Wait 5 seconds
+3. Plug back in
+4. Try uploading again
+
+### Board Manager Won't Show ESP32?
+
+Verify the board URL is added:
+- File → Preferences
+- Check "Additional boards manager URLs" contains:
+  ```
+  https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+  ```
+
+If missing, add it and restart Arduino.
+
+### Tools Seem Slow After Cleanup?
+
+Arduino might be rebuilding indexes. Wait 2-3 minutes or:
+```bash
+rm -rf ~/Library/Arduino15/staging
+rm -rf ~/Library/Arduino15/tmp
+```
+
+---
+
+## Quick Verification Script
+
+Save this to check your setup:
+
+```bash
+#!/bin/bash
+echo "=== Arduino ARM64 Setup Verification ==="
+echo ""
+echo "1. ESP32 Tools:"
+file ~/Library/Arduino15/packages/esp32/tools/esptool_py/*/esptool 2>/dev/null | tail -1
+echo ""
+echo "2. Builtin Tools:"
+find ~/Library/Arduino15/packages/builtin/tools -type f -perm +111 2>/dev/null | \
+  xargs file 2>/dev/null | grep -c arm64
+echo "   ✓ ARM64 tools found"
+echo ""
+echo "3. Intel Tools Remaining:"
+find ~/Library/Arduino15/packages -type f -perm +111 2>/dev/null | \
+  xargs file 2>/dev/null | grep -c x86_64
+echo "   (Should be 0)"
+```
+
+---
+
+## What Happens After Cleanup
+
+### Arduino Will:
+1. Detect missing tools when you open it
+2. Automatically download ARM64 versions
+3. Cache them for future use
+4. Work perfectly on your Apple Silicon Mac ✓
+
+### You Get:
+- ✓ Native ARM64 performance
+- ✓ Faster compilation
+- ✓ Smooth uploads
+- ✓ 3-4 GB free space
+
+---
+
+## Support
+
+If issues persist:
+1. Check internet connection (1 GB+ download required)
+2. Verify 2+ GB free disk space
+3. Try different USB port
+4. Restart Mac if stuck
+5. Check Arduino version is latest
+
+**Everything should work perfectly once cleaned up!** ⚡🍎
+
