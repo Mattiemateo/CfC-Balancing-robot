@@ -2,37 +2,52 @@ import numpy as np
 import pandas as pd
 import random
 
-df = pd.read_csv('balance_data.csv')
+df = pd.read_csv('balance_data_extremes.csv')
 
-episodes = [df.iloc[i:i+1200] for i in range(0, len(df), 1200)]
-random.shuffle(episodes)
-df = pd.concat(episodes[:20]).reset_index(drop=True)
+# keep episodes that have significant action, but keep ALL their rows
+interesting_episodes = df.groupby('episode').apply(
+    lambda ep: (abs(ep['u']) > 3).sum() > 20
+)
+interesting_eps = interesting_episodes[interesting_episodes].index
+df = df[df['episode'].isin(interesting_eps)].reset_index(drop=True)
+print(f"kept {df['episode'].nunique()} episodes, {len(df)} rows")
 
-theta = df['theta'].values.astype(np.float32)
-theta_dot = df['theta_dot'].values.astype(np.float32)
-u = df['u'].values.astype(np.float32)
+# balance: oversample large disturbance rows 3x
+'''
+df_small = df[abs(df['u']) < 10]
+df_large = df[abs(df['u']) >= 10]
+df = pd.concat([df_small, df_large, df_large, df_large]).reset_index(drop=True)
+print(f"balanced: {len(df)} rows, large: {len(df_large)*3}")
+'''
 
-u_scale = np.max(np.abs(u))
-u_norm = u / u_scale
+# build sequences respecting episode boundaries
+SEQ_LEN = 64
+X, Y = [], []  # ← initialize as empty lists first
 
-print(u_scale)
+for ep_id in df['episode'].unique():
+    ep = df[df['episode'] == ep_id].reset_index(drop=True)
+    theta     = ep['theta'].values.astype(np.float32)
+    theta_dot = ep['theta_dot'].values.astype(np.float32)
+    u         = ep['u'].values.astype(np.float32)
+    for i in range(len(ep) - SEQ_LEN):
+        seq = np.stack([theta[i:i+SEQ_LEN], theta_dot[i:i+SEQ_LEN]], axis=1)
+        X.append(seq)
+        Y.append(u[i + SEQ_LEN])
 
-###############################################################
-
-SEQ_LEN = 32
-
-X = []
-Y = []
-
-for i in range(len(df) - SEQ_LEN):
-    seq = np.stack([theta[i:i+SEQ_LEN], theta_dot[i:i+SEQ_LEN]], axis=1)
-    X.append(seq)
-    Y.append(u_norm[i + SEQ_LEN])
-
+# ← convert after the loop
 X = np.array(X, dtype=np.float32)
 Y = np.array(Y, dtype=np.float32)
-
+u_scale = np.max(np.abs(Y))
+Y = Y / u_scale
 print(X.shape, Y.shape)
+# look at one episode's u values
+ep0 = df[df['episode'] == 0]['u'].values
+print("episode 0 u sample:", ep0[:20])
+print("episode 0 u std:", ep0.std())
+print("u value counts at extremes:")
+print("u == 30:", (df['u'] == 30.0).sum())
+print("u == -30:", (df['u'] == -30.0).sum())
+print("u between -5 and 5:", ((df['u'] > -5) & (df['u'] < 5)).sum())
 
 ###############################################################
 
@@ -47,11 +62,15 @@ print(f"using {device}")
 X_t = torch.tensor(X).to(device)
 Y_t = torch.tensor(Y).unsqueeze(1).to(device)
 
-wiring = AutoNCP(16, 1)
+wiring = AutoNCP(32, 1)
 model = CfC(2, wiring, batch_first=True).to(device)
 #readout = nn.Linear(16, 1)
 
 print(model)
+
+print("u_scale:", u_scale)
+print("Y min/max after norm:", Y.min(), Y.max())
+print("X min/max:", X.min(), X.max())
 
 ##############################################################
 
